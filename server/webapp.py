@@ -1,5 +1,10 @@
 # coding:utf-8
+import datetime
 from flask import Flask
+
+from flask_mongoengine import MongoEngine
+from flask_user import login_required, UserManager, UserMixin
+
 from tools.flask_wxapp import WXApp
 
 
@@ -8,7 +13,25 @@ wxapp = WXApp()
 def create_app():
     app = Flask(__name__)
     app.config.from_object('settings')
+    db = MongoEngine(app)
     wxapp.init_app(app)
+
+    # Define the User document.
+    # NB: Make sure to add flask_user UserMixin !!!
+    class User(db.Document, UserMixin):
+        active = db.BooleanField(default=True)
+
+        # User authentication information
+        username = db.StringField(default='')
+        password = db.StringField()
+
+        # User information
+        play_count = db.IntField(default=0)
+        today_point = db.IntField(default=0)
+        login_time = db.DateTimeField(default=datetime.datetime.utcnow)
+
+    # Setup Flask-User and specify the User data-model
+    user_manager = UserManager(app, db, User)
 
     from api.api_1 import blueprint as api_1_blueprint
     app.register_blueprint(api_1_blueprint, url_prefix='/api/v1')
