@@ -2,8 +2,8 @@
 import datetime
 from flask import Flask
 
+from flask_login import LoginManager, UserMixin
 from flask_mongoengine import MongoEngine
-from flask_user import login_required, UserManager, UserMixin
 
 from tools.flask_wxapp import WXApp
 
@@ -16,22 +16,24 @@ def create_app():
     db = MongoEngine(app)
     wxapp.init_app(app)
 
-    # Define the User document.
-    # NB: Make sure to add flask_user UserMixin !!!
     class User(db.Document, UserMixin):
+        meta = {'collection': 'user'}
         active = db.BooleanField(default=True)
 
         # User authentication information
-        username = db.StringField(default='')
-        password = db.StringField()
+        user_wxid = db.StringField(default='')
 
         # User information
         play_count = db.IntField(default=0)
+        word_count = db.IntField(default=0)
         today_point = db.IntField(default=0)
+        total_point = db.IntField(default=0)
         login_time = db.DateTimeField(default=datetime.datetime.utcnow)
 
-    # Setup Flask-User and specify the User data-model
-    user_manager = UserManager(app, db, User)
+    user_manager = LoginManager()
+    @login_manager.user_loader
+    def load_user(user_id):
+        return User.objects(pk=user_id).first()
 
     from api.api_1 import blueprint as api_1_blueprint
     app.register_blueprint(api_1_blueprint, url_prefix='/api/v1')
